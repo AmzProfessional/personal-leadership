@@ -7,10 +7,10 @@
 
 ## Додаткові матеріали (Модуль 8)
 
-- Файл [[https://drive.google.com/file/d/1XYyP94hlpu0jRA9EVfuygL_fr-ZR3dtm/view?usp=sharing|Презентація до заняття 8]]
-- Стаття [[https://www.aihr.com/blog/what-is-performance-management/|What Is Performance Management? The Complete Guide]]
-- Подкаст [[https://www.youtube.com/watch?v=trjCKGZra0M|Розвиток команди: постановка SMART цілей, плани розвитку працівників (PDP), менторство Подкаст "Майже Вчасно"]]
-- Стаття [[https://happymonday.ua/yak-davaty-zvorotnyj-zv-yazok-spivrobitnykam|Хвалити чи сварити: як давати зворотний зв’язок співробітникам...]]
+- 📄 [Презентація до заняття 8](https://drive.google.com/file/d/1XYyP94hlpu0jRA9EVfuygL_fr-ZR3dtm/view?usp=sharing)
+- 📖 [What Is Performance Management? The Complete Guide](https://www.aihr.com/blog/what-is-performance-management/)
+- 🎙 [Розвиток команди: постановка SMART цілей, плани розвитку працівників (PDP), менторство Подкаст "Майже Вчасно"](https://www.youtube.com/watch?v=trjCKGZra0M)
+- 📖 [Хвалити чи сварити: як давати зворотний зв’язок співробітникам...](https://happymonday.ua/yak-davaty-zvorotnyj-zv-yazok-spivrobitnykam)
 
 
 → [[Performance Management, Завдання|Завдання]]
