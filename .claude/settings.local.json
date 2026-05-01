@@ -4,7 +4,12 @@
       "Bash(__NEW_LINE_f468aa82560c5b5c__ python3 - <<'EOF'\nimport os, re\n\nreplacements = [\n    \\(\"- Файл [\", \"- 📄 [\"\\),\n    \\(\"- Стаття [\", \"- 📖 [\"\\),\n    \\(\"- Тест [\", \"- 📝 [\"\\),\n    \\(\"- Подкаст [\", \"- 🎙 [\"\\),\n    \\(\"- Документ [\", \"- 📄 [\"\\),\n]\n\nfor root, dirs, files in os.walk\\(\".\"\\):\n    for fname in files:\n        if not fname.endswith\\(\".md\"\\):\n            continue\n        path = os.path.join\\(root, fname\\)\n        with open\\(path, encoding=\"utf-8\"\\) as f:\n            content = f.read\\(\\)\n        original = content\n        for old, new in replacements:\n            content = content.replace\\(old, new\\)\n        if content != original:\n            with open\\(path, \"w\", encoding=\"utf-8\"\\) as f:\n                f.write\\(content\\)\n            print\\(f\"Updated: {path}\"\\)\n\nprint\\(\"Done\"\\)\nEOF)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nВиправлення формату зовнішніх посилань у курсі 2025\n\n- Замінено [[url|текст]] на [текст]\\(url\\) у всіх файлах матеріалів\n- Додано емодзі-префікси: 📄 файли, 📖 статті, 🎙 подкасти, 📝 тести\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nОновлення курсу 2026 та перейменування назви\n\n- Замінено \"Team Leadership Academy\" на \"Управління командою в бізнесі\" у всіх файлах\n- Оновлено модулі 7, 8, 9 курсу 2026: відео, матеріали, завдання\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nОновлення курсу 2026 та перейменування назви\n\n- Замінено \"Team Leadership Academy\" на \"Управління командою в бізнесі\" у всіх файлах\n- Оновлено модулі 7, 8, 9 курсу 2026: відео, матеріали, завдання\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
