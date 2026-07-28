@@ -104,6 +104,69 @@ console.log('\nПарсер — виявлення помилок:');
   check('JSON: прохідний бал 90', test.passingScore === 90, String(test.passingScore));
 }
 
+// ------------------------------------------- формат «як пишуть насправді» ----
+console.log('\nСирий формат (метадані без ---, "Питання N.", ✅, "Пояснення:"):');
+{
+  const raw = `Назва тесту:  Пробний тест
+Департаменти: AM
+Прохідний бал: 80
+Опис: Довгий опис, який
+продовжується на наступному рядку.
+Питання 1. Перше питання?
+
+* Неправильний варіант
+* ✅Правильний без пробілу після галочки
+* Ще один неправильний
+
+Пояснення: Пояснення до першого питання.
+Питання 2. Друге питання? (декілька вірних відповідей)
+
+* ✅ Перший правильний
+* ✅ Другий правильний
+* Неправильний
+
+Пояснення: Пояснення до другого.
+`;
+  const { test, errors } = parseTest(raw);
+  check('без помилок', errors.length === 0, errors.join('; '));
+  check('метадані без --- зчитано', test.title === 'Пробний тест', test.title);
+  check('перенесений рядок опису приєднано', /продовжується на наступному рядку\.$/.test(test.description), test.description);
+  check('департамент', JSON.stringify(test.departments) === '["AM"]', JSON.stringify(test.departments));
+  check('2 питання', test.questions.length === 2, String(test.questions.length));
+  check('префікс "Питання N." прибрано', test.questions[0].text === 'Перше питання?', test.questions[0].text);
+  check(
+    '✅ без пробілу: позначено правильною',
+    test.questions[0].options[1].correct === true,
+    JSON.stringify(test.questions[0].options[1]),
+  );
+  check(
+    '✅ прибрано з тексту відповіді',
+    test.questions[0].options[1].text === 'Правильний без пробілу після галочки',
+    test.questions[0].options[1].text,
+  );
+  check('жодної ✅ у розібраних даних', !JSON.stringify(test).includes('✅'), JSON.stringify(test).slice(0, 200));
+  check('"Пояснення:" розпізнано як пояснення', test.questions[0].explanation === 'Пояснення до першого питання.', String(test.questions[0].explanation));
+  check('кілька ✅ -> тип multiple', test.questions[1].type === 'multiple', test.questions[1].type);
+  check('питання 2: 2 правильні з 3', test.questions[1].options.filter((o) => o.correct).length === 2, JSON.stringify(test.questions[1].options));
+}
+
+console.log('\nСправжня вставка користувача (tests/fixtures/raw-paste.txt):');
+{
+  const raw = parseTest(readFileSync(path.join(HERE, 'fixtures', 'raw-paste.txt'), 'utf8'));
+  check('без помилок', raw.errors.length === 0, raw.errors.join('; '));
+  check('24 питання', raw.test.questions.length === 24, String(raw.test.questions.length));
+  check('час порахований авто = 24 хв', raw.test.timeLimit === 24, String(raw.test.timeLimit));
+  const multi = raw.test.questions.filter((q) => q.type === 'multiple');
+  check('4 питання з кількома відповідями', multi.length === 4, String(multi.length));
+  check(
+    'кількість правильних збігається з ✅ у джерелі',
+    JSON.stringify(multi.map((q) => q.options.filter((o) => o.correct).length)) === '[4,5,3,5]',
+    JSON.stringify(multi.map((q) => q.options.filter((o) => o.correct).length)),
+  );
+  check('жодної ✅ у текстах відповідей', !JSON.stringify(raw.test).includes('✅'));
+  check('кожне питання має пояснення', raw.test.questions.every((q) => q.explanation), '');
+}
+
 // ------------------------------------------------------------------ e2e ----
 console.log('\nНаскрізний прогін проти mock-LMS:');
 

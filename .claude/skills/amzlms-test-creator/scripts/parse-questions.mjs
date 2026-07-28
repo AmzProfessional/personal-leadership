@@ -69,9 +69,13 @@ function normalizeType(raw, correctCount) {
   return correctCount > 1 ? 'multiple' : 'single';
 }
 
-function parseFrontmatter(text) {
+function setMeta(meta, key, value) {
+  meta[key] = key === 'departments' ? splitList(value) : value;
+}
+
+function parseFencedFrontmatter(text) {
   const match = /^﻿?---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
-  if (!match) return { meta: {}, body: text };
+  if (!match) return null;
 
   const meta = {};
   for (const line of match[1].split(/\r?\n/)) {
@@ -80,10 +84,46 @@ function parseFrontmatter(text) {
     if (sep === -1) continue;
     const key = normKey(line.slice(0, sep));
     if (!key) continue;
-    const value = line.slice(sep + 1).trim();
-    meta[key] = key === 'departments' ? splitList(value) : value;
+    setMeta(meta, key, line.slice(sep + 1).trim());
   }
   return { meta, body: text.slice(match[0].length) };
+}
+
+/**
+ * Metadata written as plain `Назва тесту: ...` lines with no `---` fences.
+ *
+ * This is how the header actually arrives when someone pastes a prepared test,
+ * so requiring fences would just move the conversion work onto the person. We
+ * read leading `key: value` lines until the first question or answer appears;
+ * a wrapped value (a long Опис spilling onto the next line) continues the
+ * previous key rather than being dropped.
+ */
+function parseLooseFrontmatter(lines) {
+  const meta = {};
+  let lastKey = null;
+  let i = 0;
+
+  for (; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) continue;
+    if (matchQuestionStart(line) !== null) break;
+    if (matchOption(line)) break;
+
+    const sep = line.indexOf(':');
+    const key = sep > 0 ? normKey(line.slice(0, sep)) : null;
+    if (key) {
+      setMeta(meta, key, line.slice(sep + 1).trim());
+      lastKey = key;
+      continue;
+    }
+    if (lastKey && typeof meta[lastKey] === 'string') {
+      meta[lastKey] = `${meta[lastKey]} ${line.trim()}`.trim();
+      continue;
+    }
+    break; // leading prose that is not metadata — leave it to the question loop
+  }
+
+  return { meta, startIndex: i };
 }
 
 /** `## 3) Текст питання` -> `Текст питання`; a bare `## Текст` is left alone. */
@@ -91,12 +131,60 @@ function stripHeadingNumber(text) {
   return text.replace(/^\s*\d+\s*[.)\]]\s+/, '').trim();
 }
 
+/**
+ * Does this line open a new question? Two spellings are accepted: a Markdown
+ * heading (`## Текст`) and the numbered form people actually type when writing
+ * a test by hand (`Питання 7. Текст`).
+ *
+ * @returns {string|null} the question text, or null if this is not a question start
+ */
+function matchQuestionStart(line) {
+  const heading = /^\s{0,3}#{2,6}\s+(.*)$/.exec(line);
+  if (heading) return stripHeadingNumber(heading[1]);
+
+  const numbered = /^\s*(?:\*\*)?\s*(?:питання|запитання|question)\s*№?\s*\d+\s*[.):\]]?\s*(?:\*\*)?\s*(.*)$/iu.exec(line);
+  if (numbered) return numbered[1].replace(/^\*\*|\*\*$/g, '').trim();
+
+  return null;
+}
+
+/**
+ * A tick mark at the start of an answer means "this is the correct one". It is
+ * a marker, not part of the answer, so it must be stripped — otherwise the ✅
+ * ends up inside the option text shown to people taking the test.
+ */
+const CORRECT_MARK = /^(?:\*\*)?\s*(?:✅|❇️|✔️|✔|✓|☑️|☑|\+)\s*(?:\*\*)?\s*/u;
+
+/**
+ * @returns {{text: string, correct: boolean}|null}
+ */
+function matchOption(line) {
+  const bullet = /^\s*[-*+•·]\s+(.*)$/u.exec(line);
+  if (!bullet) return null;
+  const body = bullet[1];
+
+  const checkbox = /^\[([ xX✓✔])\]\s*(.*)$/.exec(body);
+  if (checkbox) return { text: checkbox[2].trim(), correct: checkbox[1].trim() !== '' };
+
+  if (CORRECT_MARK.test(body)) return { text: body.replace(CORRECT_MARK, '').trim(), correct: true };
+
+  return { text: body.trim(), correct: false };
+}
+
+/** `Пояснення: ...`, `> Пояснення: ...` and `**Пояснення:**  ...` all count. */
+const EXPLANATION_LABEL = /^\s*(?:>\s?)?(?:\*\*)?\s*(?:пояснення|поясненя|explanation|rationale)\s*(?:\*\*)?\s*[:：—-]\s*(.*)$/iu;
+
 function parseMarkdown(text) {
-  const { meta, body } = parseFrontmatter(text);
-  const lines = body.split(/\r?\n/);
+  const fenced = parseFencedFrontmatter(text);
+  const lines = (fenced ? fenced.body : text).split(/\r?\n/);
+  const loose = fenced ? { meta: {}, startIndex: 0 } : parseLooseFrontmatter(lines);
+  const meta = fenced ? fenced.meta : loose.meta;
 
   const questions = [];
   let current = null;
+  // Which part of the question the unmarked lines belong to. Without this a
+  // wrapped answer or a multi-line explanation would silently vanish.
+  let section = 'text';
 
   const flush = () => {
     if (!current) return;
@@ -108,14 +196,16 @@ function parseMarkdown(text) {
     current = null;
   };
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = loose.startIndex; i < lines.length; i++) {
     const line = lines[i];
-    const heading = /^\s{0,3}#{2,6}\s+(.*)$/.exec(line);
-    if (heading) {
+
+    const questionText = matchQuestionStart(line);
+    if (questionText !== null) {
       flush();
+      section = 'text';
       current = {
         line: i + 1,
-        textLines: [stripHeadingNumber(heading[1])],
+        textLines: questionText ? [questionText] : [],
         explanationLines: [],
         options: [],
         rawType: null,
@@ -124,34 +214,40 @@ function parseMarkdown(text) {
     }
     if (!current) continue; // preamble prose before the first question is ignored
 
-    const option = /^\s*[-*+]\s*\[([ xX✓✔])\]\s*(.*)$/.exec(line);
+    const option = matchOption(line);
     if (option) {
-      current.options.push({
-        text: option[2].trim(),
-        correct: option[1].trim() !== '',
-        line: i + 1,
-      });
+      section = 'options';
+      current.options.push({ ...option, line: i + 1 });
       continue;
     }
 
-    const explanation = /^\s*>\s?(.*)$/.exec(line);
-    if (explanation) {
-      // "> Пояснення: ..." — drop the label, keep the prose.
-      current.explanationLines.push(
-        explanation[1].replace(/^\s*(пояснення|explanation)\s*[:—-]\s*/i, ''),
-      );
+    const labelled = EXPLANATION_LABEL.exec(line);
+    if (labelled) {
+      section = 'explanation';
+      current.explanationLines.push(labelled[1]);
       continue;
     }
 
-    const typeLine = /^\s*(type|тип)\s*[:=]\s*(.+)$/i.exec(line);
+    const quoted = /^\s*>\s?(.*)$/.exec(line);
+    if (quoted) {
+      section = 'explanation';
+      current.explanationLines.push(quoted[1]);
+      continue;
+    }
+
+    const typeLine = /^\s*(?:type|тип)\s*[:=]\s*(.+)$/i.exec(line);
     if (typeLine && current.options.length === 0) {
-      current.rawType = typeLine[2].trim();
+      current.rawType = typeLine[1].trim();
       continue;
     }
 
-    // Anything else before the first option continues the question text, so a
-    // long question can wrap across several lines without extra syntax.
-    if (line.trim() && current.options.length === 0) current.textLines.push(line.trim());
+    if (!line.trim()) continue;
+
+    // An unmarked line continues whatever came last: the question stem, a
+    // wrapped answer, or the explanation.
+    if (section === 'text') current.textLines.push(line.trim());
+    else if (section === 'explanation') current.explanationLines.push(line.trim());
+    else if (current.options.length) current.options.at(-1).text += ` ${line.trim()}`;
   }
   flush();
 
@@ -289,6 +385,19 @@ export function formatReport({ test, errors, warnings }) {
   lines.push(`Питань:       ${test.questions.length}`);
   const single = test.questions.filter((q) => q.type === 'single').length;
   lines.push(`  одна відповідь: ${single} | багато відповідей: ${test.questions.length - single}`);
+
+  // Per-question breakdown: this is where a mis-read answer marker shows up.
+  // A question that should have one correct answer and shows 0 (or 4) is
+  // visible here in a second, and only here — the totals above would hide it.
+  if (test.questions.length) {
+    lines.push('', '  №  тип       варіантів  правильних  питання');
+    test.questions.forEach((q, i) => {
+      const correct = q.options.filter((o) => o.correct).length;
+      lines.push(
+        `  ${String(i + 1).padStart(2)}  ${q.type.padEnd(9)} ${String(q.options.length).padStart(6)} ${String(correct).padStart(10)}    ${q.text.slice(0, 52)}${q.text.length > 52 ? '…' : ''}`,
+      );
+    });
+  }
   if (warnings.length) {
     lines.push('', 'Попередження:');
     for (const w of warnings) lines.push(`  ! ${w}`);
