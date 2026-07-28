@@ -1,0 +1,16 @@
+{
+  "name": "amzlms-test-creator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bulk-create tests and questions in the amzlms.com LMS from a Markdown or JSON file.",
+  "scripts": {
+    "setup": "npm install && npx playwright install chromium",
+    "discover": "node scripts/discover.mjs",
+    "create": "node scripts/create-test.mjs",
+    "test": "node tests/run-tests.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.56.0"
+  }
+}

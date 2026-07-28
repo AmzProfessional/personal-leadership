@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mock LMS — Knowledge</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; background: #f5f6f8; color: #1b1f24; }
+      .page { max-width: 860px; margin: 0 auto; padding: 24px; }
+      .card { background: #fff; border: 1px solid #dfe3e8; border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+      .field { margin-bottom: 16px; }
+      .field-label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+      input[type='text'], input[type='number'], textarea { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #c9cfd6; border-radius: 6px; font: inherit; }
+      textarea { min-height: 64px; }
+      button { font: inherit; padding: 8px 14px; border-radius: 6px; border: 1px solid #c9cfd6; background: #fff; cursor: pointer; }
+      button.primary { background: #2f6df6; border-color: #2f6df6; color: #fff; }
+      .dropdown { position: relative; }
+      .dropdown-toggle { width: 100%; text-align: left; }
+      .dropdown-menu { position: absolute; z-index: 20; left: 0; right: 0; background: #fff; border: 1px solid #c9cfd6; border-radius: 6px; margin-top: 4px; padding: 4px; display: none; }
+      .dropdown-menu.open { display: block; }
+      .dropdown-item { padding: 7px 10px; border-radius: 4px; cursor: pointer; }
+      .dropdown-item:hover { background: #eef3ff; }
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(16, 20, 26, 0.45); display: none; align-items: flex-start; justify-content: center; overflow: auto; }
+      .modal-backdrop.open { display: flex; }
+      .modal { background: #fff; border-radius: 10px; padding: 22px; width: 700px; margin: 40px 0; }
+      .answer-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+      .answer-row input[type='text'] { flex: 1; }
+      .hint { color: #6b7280; font-size: 12px; }
+      .q-item { padding: 8px 0; border-bottom: 1px solid #eceff3; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <!-- Knowledge base listing -->
+      <div id="view-knowledge">
+        <div class="card">
+          <h2>База знань</h2>
+          <button id="btn-create-test" class="primary">Створити тест</button>
+        </div>
+      </div>
+
+      <!-- Create-test form -->
+      <div id="view-create" class="card" style="display: none">
+        <h2>Новий тест</h2>
+
+        <div class="field">
+          <label class="field-label" for="f-title">Назва тесту</label>
+          <input type="text" id="f-title" placeholder="Введіть назву" />
+        </div>
+
+        <!-- No for/id association here on purpose: exercises the anchored fallback. -->
+        <div class="field">
+          <span class="field-label">Опис тесту</span>
+          <textarea placeholder="Опис"></textarea>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Категорія</span>
+          <div class="dropdown" data-dropdown="category">
+            <button type="button" class="dropdown-toggle" role="combobox">Оберіть категорію</button>
+            <div class="dropdown-menu"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Департамент</span>
+          <div class="dropdown" data-dropdown="department">
+            <button type="button" class="dropdown-toggle" role="combobox">Оберіть департамент</button>
+            <div class="dropdown-menu"></div>
+          </div>
+          <div class="hint" id="dept-selected"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="f-pass">Прохідний бал</label>
+          <input type="number" id="f-pass" value="60" />
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="f-time">Час проходження</label>
+          <input type="number" id="f-time" value="10" />
+        </div>
+
+        <div style="display: flex; gap: 8px">
+          <button id="btn-add-question" class="primary">Додати питання</button>
+          <button id="btn-save-test">Зберегти</button>
+        </div>
+
+        <h3 style="margin-top: 22px">Питання</h3>
+        <div id="question-list" class="hint">Ще немає питань.</div>
+      </div>
+    </div>
+
+    <!-- Question editor modal -->
+    <div class="modal-backdrop" id="q-modal">
+      <div class="modal" role="dialog" aria-label="Питання">
+        <h3>Нове питання</h3>
+
+        <div class="field">
+          <span class="field-label">Тип питання</span>
+          <label><input type="radio" name="qtype" value="single" checked /> Одна вірна відповідь</label>
+          <label style="margin-left: 14px"><input type="radio" name="qtype" value="multiple" /> Багато вірних відповідей</label>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Текст запитання</span>
+          <textarea placeholder="Введіть запитання"></textarea>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Варіанти відповіді</span>
+          <div id="answers"></div>
+          <button type="button" id="btn-add-option">Додати варіант</button>
+        </div>
+
+        <div class="field">
+          <span class="field-label">Пояснення</span>
+          <textarea placeholder="Пояснення"></textarea>
+        </div>
+
+        <div style="display: flex; gap: 8px">
+          <button id="btn-save-question" class="primary">Зберегти питання</button>
+          <button id="btn-cancel-question">Скасувати</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Minimal stand-in for the real LMS: same shapes (custom dropdowns, modal
+      // editor, dynamically added answer rows), and it records everything into
+      // window.__LMS_STATE so the test harness can assert on the result.
+      const CATEGORIES = ['Управління командою', 'Продажі', 'Онбординг', 'Технічні навички'];
+      const DEPARTMENTS = ['Sales', 'Support', 'Operations', 'HR'];
+
+      window.__LMS_STATE = { test: null, questions: [] };
+
+      // Snapshot the form as it currently stands. Read live rather than only on
+      // "Зберегти", because a real LMS may create the test implicitly and the
+      // runner only clicks save when it has to.
+      function snapshotTest() {
+        return {
+          title: $('#f-title').value,
+          description: $('#view-create textarea').value,
+          category: dropdownValues.category,
+          departments: dropdownValues.department.slice(),
+          passingScore: Number($('#f-pass').value),
+          timeLimit: Number($('#f-time').value),
+        };
+      }
+
+      // When served by tests/run-tests.mjs, mirror state to the harness so it
+      // can assert on what the automation actually submitted.
+      function publishState() {
+        window.__LMS_STATE.test = snapshotTest();
+        fetch('/__state', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(window.__LMS_STATE),
+        }).catch(() => {});
+      }
+
+      const $ = (sel, root = document) => root.querySelector(sel);
+      const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+      // ---- dropdowns -----------------------------------------------------
+      const dropdownValues = { category: null, department: [] };
+      for (const dd of $$('[data-dropdown]')) {
+        const kind = dd.dataset.dropdown;
+        const menu = $('.dropdown-menu', dd);
+        const toggle = $('.dropdown-toggle', dd);
+        for (const value of kind === 'category' ? CATEGORIES : DEPARTMENTS) {
+          const item = document.createElement('div');
+          item.className = 'dropdown-item';
+          item.setAttribute('role', 'option');
+          item.textContent = value;
+          item.addEventListener('click', () => {
+            if (kind === 'category') {
+              dropdownValues.category = value;
+              toggle.textContent = value;
+            } else {
+              if (!dropdownValues.department.includes(value)) dropdownValues.department.push(value);
+              toggle.textContent = dropdownValues.department.join(', ');
+              $('#dept-selected').textContent = 'Обрано: ' + dropdownValues.department.join(', ');
+            }
+            menu.classList.remove('open');
+          });
+          menu.appendChild(item);
+        }
+        toggle.addEventListener('click', () => menu.classList.toggle('open'));
+      }
+
+      // ---- navigation ----------------------------------------------------
+      $('#btn-create-test').addEventListener('click', () => {
+        $('#view-knowledge').style.display = 'none';
+        $('#view-create').style.display = 'block';
+      });
+
+      $('#btn-save-test').addEventListener('click', publishState);
+
+      // ---- question modal ------------------------------------------------
+      const modal = $('#q-modal');
+      const answers = $('#answers');
+
+      function addAnswerRow() {
+        const row = document.createElement('div');
+        row.className = 'answer-row';
+        row.innerHTML =
+          '<input type="checkbox" /><input type="text" placeholder="Варіант відповіді" />';
+        answers.appendChild(row);
+      }
+
+      function resetModal() {
+        answers.innerHTML = '';
+        addAnswerRow();
+        addAnswerRow(); // the real UI starts with two empty options
+        $$('#q-modal textarea').forEach((t) => (t.value = ''));
+        $('input[name="qtype"][value="single"]').checked = true;
+      }
+
+      $('#btn-add-question').addEventListener('click', () => {
+        resetModal();
+        modal.classList.add('open');
+      });
+      $('#btn-add-option').addEventListener('click', addAnswerRow);
+      $('#btn-cancel-question').addEventListener('click', () => modal.classList.remove('open'));
+
+      $('#btn-save-question').addEventListener('click', () => {
+        const textareas = $$('#q-modal textarea');
+        const question = {
+          type: $('input[name="qtype"]:checked').value,
+          text: textareas[0].value,
+          explanation: textareas[1].value,
+          options: $$('.answer-row', answers).map((row) => ({
+            text: $('input[type="text"]', row).value,
+            correct: $('input[type="checkbox"]', row).checked,
+          })),
+        };
+        window.__LMS_STATE.questions.push(question);
+        modal.classList.remove('open');
+        publishState();
+
+        const list = $('#question-list');
+        if (list.classList.contains('hint')) {
+          list.classList.remove('hint');
+          list.innerHTML = '';
+        }
+        const item = document.createElement('div');
+        item.className = 'q-item';
+        item.textContent = window.__LMS_STATE.questions.length + '. ' + question.text;
+        list.appendChild(item);
+      });
+    </script>
+  </body>
+</html>

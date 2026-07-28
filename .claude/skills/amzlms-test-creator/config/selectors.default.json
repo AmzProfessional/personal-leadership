@@ -1,0 +1,96 @@
+{
+  "_comment": "Starting hints, not ground truth. Each field lists label/placeholder/role candidates in Ukrainian and English; the resolver tries them in order and falls back to anchoring on visible text. Run scripts/discover.mjs against the real LMS and put exact `css` values into config/selectors.json for anything that resolves badly.",
+
+  "urls": {
+    "knowledge": "https://amzlms.com/#/knowledge",
+    "dashboard": "https://amzlms.com/#/dashboard"
+  },
+
+  "options": {
+    "defaultPassingScore": 80,
+    "minutesPerQuestion": 1,
+    "questionSaveWaitMs": 700
+  },
+
+  "fields": {
+    "createTestButton": {
+      "role": "button",
+      "name": ["Створити тест", "Створити тестування", "Create test", "New test", "Додати тест"]
+    },
+
+    "title": {
+      "label": ["Назва тесту", "Назва", "Title", "Test name", "Name"],
+      "placeholder": ["Назва тесту", "Введіть назву", "Title"]
+    },
+    "description": {
+      "label": ["Опис тесту", "Опис", "Description"],
+      "placeholder": ["Опис", "Description"]
+    },
+    "category": {
+      "label": ["Категорія", "Категорія тесту", "Category"],
+      "placeholder": ["Оберіть категорію", "Категорія", "Select category"]
+    },
+    "departments": {
+      "label": ["Департамент", "Департаменти", "Відділ", "Department", "Departments"],
+      "placeholder": ["Оберіть департамент", "Департамент", "Select department"]
+    },
+    "passingScore": {
+      "label": ["Прохідний бал", "Прохідний відсоток", "Passing score", "Pass score"],
+      "placeholder": ["Прохідний бал", "80"]
+    },
+    "timeLimit": {
+      "label": ["Час", "Час проходження", "Тривалість", "Ліміт часу", "Time", "Duration", "Time limit"],
+      "placeholder": ["Час", "Хвилин", "Minutes"]
+    },
+    "saveTestButton": {
+      "role": "button",
+      "name": ["Зберегти", "Створити", "Save", "Create", "Далі", "Next"]
+    },
+
+    "addQuestionButton": {
+      "role": "button",
+      "name": ["Додати питання", "Додати запитання", "Add question", "New question"]
+    },
+    "questionTypeSingle": {
+      "role": "radio",
+      "name": ["Одна вірна відповідь", "Одна правильна відповідь", "Одна відповідь", "Single choice", "Single answer", "One correct answer"]
+    },
+    "questionTypeMultiple": {
+      "role": "radio",
+      "name": ["Багато вірних відповідей", "Декілька правильних відповідей", "Кілька відповідей", "Multiple choice", "Multiple answers"]
+    },
+    "questionText": {
+      "label": ["Текст запитання", "Текст питання", "Запитання", "Питання", "Question", "Question text"],
+      "placeholder": ["Текст запитання", "Введіть запитання", "Question"]
+    },
+    "explanation": {
+      "label": ["Пояснення", "Пояснення до відповіді", "Explanation", "Rationale"],
+      "placeholder": ["Пояснення", "Explanation"]
+    },
+
+    "optionRow": {
+      "css": [
+        "[data-testid='answer-row']",
+        ".answer-row",
+        ".answer-option",
+        ".option-row",
+        ".question-answer"
+      ]
+    },
+    "optionInput": {
+      "css": ["input[type='text']", "textarea", "[contenteditable='true']"],
+      "placeholder": ["Варіант відповіді", "Відповідь", "Answer", "Option"]
+    },
+    "optionCorrectToggle": {
+      "css": ["input[type='checkbox']", "input[type='radio']", "[role='checkbox']", "[role='radio']"]
+    },
+    "addOptionButton": {
+      "role": "button",
+      "name": ["Додати варіант", "Додати відповідь", "Add option", "Add answer", "Додати"]
+    },
+    "saveQuestionButton": {
+      "role": "button",
+      "name": ["Зберегти питання", "Зберегти запитання", "Зберегти", "Додати", "Save question", "Save", "Add"]
+    }
+  }
+}
